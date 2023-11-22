@@ -110,10 +110,7 @@ def polynomial_regression(x, y, z, degree=2, alpha=0.01, num_iterations=1000):
     X = np.column_stack((x, y))
     X_poly = generate_polynomial_features(X, degree)
 
-    # Initialize parameters
     theta = np.zeros(X_poly.shape[1])
-
-    # Perform gradient descent
     theta, _ = gradient_descent(X_poly, z, theta, alpha, num_iterations)
 
     return theta, X_poly
