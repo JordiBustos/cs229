@@ -2,75 +2,94 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def update_w_and_b(spendings, sales, w, b, alpha):
+def update_w_and_b(features, target, w, b, alpha, lambda_reg):
     dl_dw = np.zeros_like(w)
     dl_db = 0.0
-    N = len(spendings)
+    N = len(features)
 
     for i in range(N):
-        dl_dw += -2 * spendings[i] * (sales[i] - np.dot(w, spendings[i]) - b)
-        dl_db += -2 * (sales[i] - np.dot(w, spendings[i]) - b)
+        dl_dw += -2 * features[i] * (target[i] - np.dot(w, features[i]) - b)
+        dl_db += -2 * (target[i] - np.dot(w, features[i]) - b)
 
-    w = w - (1 / float(N)) * dl_dw * alpha
+    w = w - (1 / float(N)) * (dl_dw + 2 * lambda_reg * w) * alpha
     b = b - (1 / float(N)) * dl_db * alpha
 
     return w, b
 
 
-def train(spendings, sales, w, b, alpha, epochs, plot_interval=1000):
+def train_gradient_descent(
+    features,
+    target,
+    w,
+    b,
+    alpha,
+    epochs,
+    plot_interval=1000,
+    lambda_reg=0.01,
+    tolerance=1e-5,
+):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
 
     for e in range(epochs):
-        w, b = update_w_and_b(spendings, sales, w, b, alpha)
+        w_prev = w.copy()
+        w, b = update_w_and_b(features, target, w, b, alpha, lambda_reg)
 
         # log the progress
         if e % plot_interval == 0:
-            print("epoch:", e, "loss: ", avg_loss(spendings, sales, w, b))
-            plot_plane(ax, w, b, spendings, sales)
+            print("epoch:", e)
+            print("avg_loss:", avg_loss(features, target, w, b, lambda_reg))
+            plot_plane(ax, w, b, features, target)
+
+        # check for convergence
+        if np.linalg.norm(w - w_prev) <= tolerance:
+            print("Converged! Stopping training.")
+            break
 
     return w, b
 
 
-def avg_loss(spendings, sales, w, b):
-    N = len(spendings)
-    total_error = np.sum((sales - np.dot(w, spendings.T) - b) ** 2)
-    return total_error / float(N)
+def avg_loss(features, target, w, b, lambda_reg=0.01):
+    N = len(features)
+    total_error = np.sum((target - np.dot(features, w) - b) ** 2)
+    regularization_term = lambda_reg * np.sum(w**2)
+    return (total_error + regularization_term) / float(N)
 
 
 def predict(x, w, b):
     return np.dot(w, x) + b
 
 
-def plot_plane(ax, w, b, spendings, sales):
-    x_min = np.min(spendings[:, 0])
-    x_max = np.max(spendings[:, 0])
-    y_min = np.min(spendings[:, 1])
-    y_max = np.max(spendings[:, 1])
+def plot_plane(ax, w, b, features, target):
+    x_min, x_max = np.min(features[:, 0]), np.max(features[:, 0])
+    y_min, y_max = np.min(features[:, 1]), np.max(features[:, 1])
 
     x, y = np.meshgrid(np.linspace(x_min, x_max, 10), np.linspace(y_min, y_max, 10))
-    z = w[0] * x + w[1] * y + w[2] * 1 + b
+    z = w[0] * x + w[1] * y + b  # the plane equation
 
     ax.clear()
-    ax.scatter(spendings[:, 0], spendings[:, 1], sales, c="r", marker="o")
+    ax.scatter(features[:, 0], features[:, 1], target, c="r", marker="o")
     ax.plot_surface(x, y, z, alpha=0.5, cmap="viridis")
     ax.set_xlabel("Feature 1")
     ax.set_ylabel("Feature 2")
-    ax.set_zlabel("Sales")
+    ax.set_zlabel("Target")
     plt.pause(0.01)
 
 
-# Generate 3D random data
-x = np.random.rand(200, 3)
-noise = np.random.normal(0, 0.1, 1)
-y = np.dot(x, np.array([2, 3, 4])) + 5 + noise
+def generate_points(sample_size=100):
+    x = np.random.rand(sample_size, 2)
+    noise = np.random.normal(0, 0.5, sample_size)
+    y = (
+        np.dot(x, np.array([2, 3])) + 5 + noise
+    )  # assume that the target is a linear function of the features
+    w = np.zeros(2)
+    b = 0.0
+
+    return x, y, w, b
 
 
-# Initialize weights and biases
-w = np.zeros(3)
-b = 0.0
+if __name__ == "__main__":
+    x, y, w, b = generate_points()
+    w, b = train_gradient_descent(x, y, w, b, 0.001, 20000, plot_interval=1000)
 
-# Train the model with normalized features
-w, b = train(x, y, w, b, 0.001, 15000, plot_interval=1000)
-
-plt.show()
+    plt.show()
