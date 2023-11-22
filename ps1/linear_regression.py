@@ -88,8 +88,27 @@ def generate_points(sample_size=100):
     return x, y, w, b
 
 
+def compute_w_normal_equation(features, target):
+    ones = np.ones((features.shape[0], 1))
+    features_with_bias = np.concatenate((ones, features), axis=1)
+    return np.dot(
+        np.linalg.inv(np.dot(features_with_bias.T, features_with_bias)),
+        np.dot(features_with_bias.T, target),
+    )
+
+
 if __name__ == "__main__":
     x, y, w, b = generate_points()
-    w, b = train_gradient_descent(x, y, w, b, 0.001, 20000, plot_interval=1000)
+    w, b = train_gradient_descent(x, y, w, b, 0.001, 10000, plot_interval=1000)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d")
+    w_normal_equation = compute_w_normal_equation(x, y)
+    plot_plane(ax, w_normal_equation[1:], w_normal_equation[0], x, y)
+
+    plt.show()
+    print("w_normal_equation:", w_normal_equation)
+    print("w:", w)
+    print("b:", b)
 
     plt.show()
